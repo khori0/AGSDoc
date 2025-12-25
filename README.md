@@ -119,6 +119,7 @@ Used for warning lights (Check Engine, Turn Signals, etc.). Can be defined insid
 Combine with commas (e.g., `"GT_RPM, GT_TURBO"`).
 * `GT_NONE`
 * `GT_RPM`
+* `GT_SPEEDO`
 * `GT_TURBO`
 * `GT_FUEL`
 * `GT_TEMP`
