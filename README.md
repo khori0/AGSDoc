@@ -34,7 +34,7 @@ A basic skin file looks like this:
   "Scale": 1.0,
   "UseGlobalUnderlay": true,
   "RPM": { ... },
-  "Turbo": { ... }
+  "Speedo": { ... }
 }
 ```
 
@@ -54,7 +54,7 @@ These settings apply to the entire HUD.
 | `GlobalUnderlayWidth` | Int | 1024 | Width of the global background texture. |
 | `GlobalUnderlayHeight` | Int | 1024 | Height of the global background texture. |
 | `GlobalUnderlayZIndex` | Int | 0 | 0 = Behind gauges, 1 = On top (glass effect). |
-| `UseSharedUnderlay` | Bool | true | If true, all gauges look for a generic `UNDERLAY` texture. If false, they look for `RPM_UNDERLAY`, `TURBO_UNDERLAY`, etc. |
+| `UseSharedUnderlay` | Bool | true | If true, all gauges look for a generic `UNDERLAY` texture. |
 | `UseSharedLED` | Bool | true | If true, uses a shared LED texture. |
 | `UseSharedNeedle` | Bool | true | If true, uses a shared needle texture. |
 
@@ -71,23 +71,25 @@ Each gauge (`RPM`, `Speedo`, `Turbo`, `Fuel`, `Temp`, `Oil`) has its own configu
 | `AngleMin` | Float | The rotation angle (degrees) at the gauge's minimum value. |
 | `AngleMax` | Float | The rotation angle (degrees) at the gauge's maximum value. |
 | `GaugeLayers` | [GAUGE_LAYER](#gauge_layer) | Which layers to draw (e.g., `"GL_NEEDLE, GL_NUMBERS"`). |
-| `DisableColoring` | Bool | If true, the gauge ignores user color palettes (useful for photo-real skins). |
-| `HasNightTimeVariant` | Bool | If true, the system looks for `_NIGHT` suffixed textures at night. |
-| `LEDThreshold` | Float | Value (0.0-1.0) at which the LED layer activates (default 0.75). |
+| `DisableColoring` | Bool | If true, the gauge ignores user color palettes. |
+| `HasNightTimeVariant` | Bool | If true, looks for `_NIGHT` suffixed textures at night. |
+| `LEDThreshold` | Float | Value (0.0-1.0) at which the LED layer activates. |
 | `Symbols` | [SymbolLayout](#symbol-clusters) | A symbol cluster attached specifically to this gauge. |
 
-**RPM Specifics:**
+---
 
-The `RPM` block has extra `Data` and `Layout` objects.
+#### RPM Specifics
+
+The `RPM` block uses `Data` for engine-logic and `Layout` for digital element positioning.
 
 ```json
 "RPM": {
   "Data": {
-    "MinRpm": 7000,             // Lowest RPM face available
-    "MaxRpm": 10000,            // Highest RPM face available
-    "AvailableSteps": [7000, 9000, 10000], // List of texture prefixes available
-    "SpeedDisplayScale": 1.0,   // Scale of the digital speed text
-    "GearDisplayScale": 1.0     // Scale of the digital gear text
+    "MinRpm": 7000,
+    "MaxRpm": 10000,
+    "AvailableSteps": [7000, 8000, 9000, 10000], 
+    "SpeedDisplayScale": 1.0,
+    "GearDisplayScale": 1.0
   },
   "Layout": {
     "GearPositionOffset": { "X": 24, "Y": 35 },
@@ -96,52 +98,52 @@ The `RPM` block has extra `Data` and `Layout` objects.
 }
 ```
 
+#### Speedo Specifics
+
+The `Speedo` block handles the physical scaling of the speedometer needle.
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `MaxSpeedValueInMetersPerSecond` | Float | The real-world speed that represents the end of the gauge dial. |
+
+> **Tip:** To convert km/h to m/s, divide by 3.6. For example, a 300 km/h dial would be approximately 83.33.
+
+```json
+"Speedo": {
+  "MaxSpeedValueInMetersPerSecond": 83.33,
+  "RelativePosition": { "X": 450, "Y": 0 },
+  "AngleMin": -140.0,
+  "AngleMax": 140.0
+}
+```
+
+---
+
 ### Symbol Clusters
 
-Used for warning lights (Check Engine, Turn Signals, etc.). Can be defined inside a Gauge's `Symbols` property or in the root `AdditionalSymbolClusters` list.
+Used for warning lights. Can be defined inside a Gauge or in `AdditionalSymbolClusters`.
 
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `EnabledSymbols` | [DASH_SYMBOL](#dash_symbol)[] | [] | List of symbols to include. |
+| `EnabledSymbols` | Enum[] | [] | List of [DASH_SYMBOL](#dash_symbol) to include. |
 | `SymbolClusterOffset` | Point | 0,0 | Position offset. |
 | `SymbolScale` | Float | 0.5 | Size of the icons. |
-| `UseRadialPositioning` | Bool | false | `true` = Circle arrangement, `false` = Grid. |
-| `SymbolSpacingX` | Int | 0 | Horizontal space between icons (Grid mode). |
-| `SymbolSpacingY` | Int | 0 | Vertical space between icons (Grid mode). |
-| `Wrap` | Int | 2 | How many icons per row before wrapping (Grid mode). |
+| `UseRadialPositioning` | Bool | false | `true` = Circle, `false` = Grid. |
+| `SymbolSpacingX` | Int | 0 | Horizontal space (Grid mode). |
+| `SymbolSpacingY` | Int | 0 | Vertical space (Grid mode). |
+| `Wrap` | Int | 2 | Icons per row (Grid mode). |
 | `SymbolArcRadius` | Float | 150.0 | Distance from center (Radial mode). |
-| `SymbolArcAngleStart` | Float | -135.0 | Start angle (Radial mode). |
-| `SymbolArcAngleEnd` | Float | 45.0 | End angle (Radial mode). |
 
 ### Valid Values (Enums)
 
 #### GAUGE_TYPE
 Combine with commas (e.g., `"GT_RPM, GT_TURBO"`).
-* `GT_NONE`
-* `GT_RPM`
-* `GT_SPEEDO`
-* `GT_TURBO`
-* `GT_FUEL`
-* `GT_TEMP`
-* `GT_OIL`
-* `GT_ALL`
+* `GT_NONE`, `GT_RPM`, `GT_SPEEDO`, `GT_TURBO`, `GT_FUEL`, `GT_TEMP`, `GT_OIL`, `GT_ALL`
 
 #### GAUGE_LAYER
-Controls which image layers are visible.
-* `GL_NONE`
-* `GL_UNDERLAY`
-* `GL_FILL`
-* `GL_LINES_MAJOR`
-* `GL_LINES_MINOR`
-* `GL_NEEDLE`
-* `GL_NUMBERS`
-* `GL_REDLINE`
-* `GL_LED`
-* `GL_ALL`
+* `GL_NONE`, `GL_UNDERLAY`, `GL_FILL`, `GL_LINES_MAJOR`, `GL_LINES_MINOR`, `GL_NEEDLE`, `GL_NUMBERS`, `GL_REDLINE`, `GL_LED`, `GL_ALL`
 
 #### DASH_SYMBOL
-Valid strings for `EnabledSymbols`.
-
 * **Amber:** `SY_A_ABS`, `SY_A_ASR`, `SY_A_ENGINE`, `SY_A_FOGL`, `SY_A_FUEL`, `SY_A_TIREPRESSURE`, `SY_A_DLIGHT`
 * **Red:** `SY_R_BATT`, `SY_R_BRAKE_MAL`, `SY_R_DOOR`, `SY_R_DOORS`, `SY_R_HOOD`, `SY_R_TRUNK`, `SY_R_OIL`, `SY_R_PBRAKE`, `SY_R_TEMP`
 * **Green/Blue:** `SY_G_DAYTIME`, `SY_G_HEADLIGHTS`, `SY_G_TURN_L`, `SY_G_TURN_R`, `SY_B_HIGHBEAMS`
@@ -161,30 +163,25 @@ The configuration uses a `UnifiedColor` type that accepts either a standard GTA 
 
 ### Palette Structure
 
-A palette file defines core colors and optional overrides.
-
 ```json
 {
   "Name": "Neon Night",
-  
-  // Core Colors (Required)
-  "Primary": "White",       // Used for Minor Lines, Labels (fallback)
-  "Accent": "#00FFFF",      // Used for Major Lines, Needle (fallback)
-  "Warning": "Red",         // Used for Redlines
-  "Background": "#000000",  // Used for Underlay
-
-  // Overrides (Optional - specific control)
+  "Primary": "White",
+  "Accent": "#00FFFF",
+  "Warning": "Red",
+  "Background": "#000000",
   "NeedleOverride": "Orange",
   "DigitOverride": "White",
-  "LabelOverride": null     // null means use Primary
+  "LabelOverride": null
 }
 ```
 
 ### Presets vs. Live Settings
 
-* **Presets Folder:** Files in the `Palettes` directory are **read-only templates**. You cannot modify them directly from the game menu.
-* **Live Settings:** The game maintains a "Living Instance" of the palette in `HUDSettings`.
-* **Modifying:** When you change colors using the in-game menu sliders, you are modifying the **Live Instance**, not the file on disk.
-* **Saving:** To save your custom colors, you must export them as a new Preset from the menu.
+* **Presets Folder:** Files in the `Palettes` directory are **read-only templates**.
+* **Live Settings:** The game maintains a "Living Instance" (Master/Worker) in `HUDSettings`.
+* **Modifying:** Changes via menu sliders affect the **Live Instance**.
+* **Saving:** To keep custom colors permanently, export them as a new Preset from the menu.
 
-**Note:** If you modify a palette via the menu, the system may append `(Modified)` to the name in the UI to indicate it no longer matches the saved preset.
+---
+**Happy Skinning!**
