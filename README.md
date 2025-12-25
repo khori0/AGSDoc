@@ -1,76 +1,122 @@
-# AGS Skin Configuration Guide
+# AGS Configuration Guide
 
-This guide provides the necessary technical specifications for creating custom gauge skins for the **AGS HUD system**. Skins are defined using JSON logic stored in `.asc` files.
+This guide explains how to configure the Advanced Gauge System (AGS). It covers creating custom skins (`.asc` files) and managing color palettes (`.apd` files).
 
----
-
-## 1. File Structure & Location
-To ensure the HUD system recognizes your custom skin, adhere to the following file standards:
-
-* **File Extension:** `.asc` (AGS Skin Config)
-* **Directory:** `GTAV/plugins/AGS/Skins/`
-* **Format:** Standard JSON
-
----
-
-## 2. Texture Naming Convention
-The system dynamically loads textures from your `.ytd` (Texture Dictionary) based on the following naming patterns:
-
-* **[ID]:** The `SkinId` defined in your config (e.g., `AGS_S01`).
-* **[PREFIX]:** The gauge type (e.g., `RPM`, `TURBO`, `FUEL`, `TEMP`, `OIL`).
-
-### Layer Naming Table
-| Layer | Texture Name Format | Notes |
-| :--- | :--- | :--- |
-| **Underlay** | `[PREFIX]_UNDERLAY` | If `UseSharedUnderlay` is true, simply name it `UNDERLAY`. |
-| **Fill** | `[PREFIX]_FILL` | Background behind lines but above the underlay. |
-| **Major Lines** | `[PREFIX]_LINES_MAJOR` | The primary tick marks. |
-| **Minor Lines** | `[PREFIX]_LINES_MINOR` | The secondary/smaller tick marks. |
-| **Needle** | `[PREFIX]_NEEDLE` | The moving pointer/indicator. |
-| **Numbers** | `[PREFIX]_NUMBERS` | Static numerical values on the face. |
-| **Redline** | `[PREFIX]_REDLINE` | The high-RPM danger zone indicator. |
-
-> **Note on RPM Special Case:** The RPM gauge is dynamic. You must provide textures prefixed with the RPM step (e.g., `7000_LINES_MAJOR`, `9000_NUMBERS`).
+## Table of Contents
+1. [Skin Configuration (.asc)](#skin-configuration-asc)
+   - [File Structure](#file-structure)
+   - [Global Settings](#global-settings)
+   - [Gauge Settings](#gauge-settings)
+   - [Symbol Clusters](#symbol-clusters)
+   - [Valid Values (Enums)](#valid-values-enums)
+2. [Palette System (.apd)](#palette-system-apd)
+   - [UnifiedColor System](#unifiedcolor-system)
+   - [Palette Structure](#palette-structure)
+   - [Presets vs. Live Settings](#presets-vs-live-settings)
 
 ---
 
-## 3. Configuration Reference
+## Skin Configuration (.asc)
 
-### Root Object
-*The top-level settings for the entire skin.*
+Skins define the layout, textures, and behavior of the HUD. They are JSON files located in the `Skins` folder.
+
+### File Structure
+
+A basic skin file looks like this:
+
+```json
+{
+  "SkinId": "AGS_S01",
+  "Name": "Sport Carbon",
+  "Author": "Khorio",
+  "Version": "1.0",
+  "EnabledGauges": "GT_RPM, GT_TURBO, GT_FUEL",
+  "Scale": 1.0,
+  "UseGlobalUnderlay": true,
+  "RPM": { ... },
+  "Turbo": { ... }
+}
+```
+
+### Global Settings
+
+These settings apply to the entire HUD.
 
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `SkinId` | String | "default" | The name of the corresponding `.ytd` file. |
-| `Name` | String | "default" | The name shown in the in-game menu. |
-| `Author` | String | "default" | Creator's name. |
-| `Version` | String | "1.0" | Skin version. |
+| `SkinId` | String | "default_id" | The name of the `.ytd` texture dictionary to load. |
+| `Name` | String | "default_name" | Display name in the menu. |
+| `Author` | String | "default_author" | Creator name. |
+| `Version` | String | "default_version" | Skin version. |
+| `EnabledGauges` | [GAUGE_TYPE](#gauge_type) | "GT_ALL" | Which gauges to render. Combine flags with commas. |
 | `Scale` | Float | 1.0 | Global scale multiplier for the entire HUD. |
-| `EnabledGauges` | Flag | "GT_ALL" | Which gauges to render (see Enums). |
-| `UseGlobalUnderlay` | Bool | false | Draws one large background behind all gauges. |
-| `UseSharedUnderlay` | Bool | true | All gauges share a single `UNDERLAY` texture. |
+| `UseGlobalUnderlay` | Bool | false | If true, draws a single large background sprite behind all gauges. |
 | `GlobalUnderlayWidth` | Int | 1024 | Width of the global background texture. |
 | `GlobalUnderlayHeight` | Int | 1024 | Height of the global background texture. |
+| `GlobalUnderlayZIndex` | Int | 0 | 0 = Behind gauges, 1 = On top (glass effect). |
+| `UseSharedUnderlay` | Bool | true | If true, all gauges look for a generic `UNDERLAY` texture. If false, they look for `RPM_UNDERLAY`, `TURBO_UNDERLAY`, etc. |
+| `UseSharedLED` | Bool | true | If true, uses a shared LED texture. |
+| `UseSharedNeedle` | Bool | true | If true, uses a shared needle texture. |
 
 ### Gauge Settings
-*Settings applied to individual gauge blocks (RPM, Turbo, etc).*
+
+Each gauge (`RPM`, `Turbo`, `Fuel`, `Temp`, `Oil`) has its own configuration block.
+
+**Common Properties:**
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
 | `RelativePosition` | Point | `{ "X": 0, "Y": 0 }` offset from the HUD center. |
 | `Scale` | Float | Local scale multiplier for this specific gauge. |
-| `AngleMin` | Float | Rotation angle (degrees) at the minimum value. |
-| `AngleMax` | Float | Rotation angle (degrees) at the maximum value. |
-| `GaugeLayers` | Flag | Which layers to draw (e.g., `"GL_NEEDLE, GL_NUMBERS"`). |
-| `DisableColoring` | Bool | If true, ignores user color palettes. |
-| `Symbols` | Object | A SymbolLayout object attached to this gauge. |
+| `AngleMin` | Float | The rotation angle (degrees) at the gauge's minimum value. |
+| `AngleMax` | Float | The rotation angle (degrees) at the gauge's maximum value. |
+| `GaugeLayers` | [GAUGE_LAYER](#gauge_layer) | Which layers to draw (e.g., `"GL_NEEDLE, GL_NUMBERS"`). |
+| `DisableColoring` | Bool | If true, the gauge ignores user color palettes (useful for photo-real skins). |
+| `HasNightTimeVariant` | Bool | If true, the system looks for `_NIGHT` suffixed textures at night. |
+| `LEDThreshold` | Float | Value (0.0-1.0) at which the LED layer activates (default 0.75). |
+| `Symbols` | [SymbolLayout](#symbol-clusters) | A symbol cluster attached specifically to this gauge. |
 
----
+**RPM Specifics:**
 
-## 4. Valid Values (Enums)
+The `RPM` block has extra `Data` and `Layout` objects.
 
-### GAUGE_TYPE (Flags)
-*Combine using commas (e.g., `"GT_RPM, GT_TURBO"`)*
+```json
+"RPM": {
+  "Data": {
+    "MinRpm": 7000,             // Lowest RPM face available
+    "MaxRpm": 10000,            // Highest RPM face available
+    "AvailableSteps": [7000, 9000, 10000], // List of texture prefixes available
+    "SpeedDisplayScale": 1.0,   // Scale of the digital speed text
+    "GearDisplayScale": 1.0     // Scale of the digital gear text
+  },
+  "Layout": {
+    "GearPositionOffset": { "X": 24, "Y": 35 },
+    "SpeedPositionOffset": { "X": -15, "Y": 42 }
+  }
+}
+```
+
+### Symbol Clusters
+
+Used for warning lights (Check Engine, Turn Signals, etc.). Can be defined inside a Gauge's `Symbols` property or in the root `AdditionalSymbolClusters` list.
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `EnabledSymbols` | [DASH_SYMBOL](#dash_symbol)[] | [] | List of symbols to include. |
+| `SymbolClusterOffset` | Point | 0,0 | Position offset. |
+| `SymbolScale` | Float | 0.5 | Size of the icons. |
+| `UseRadialPositioning` | Bool | false | `true` = Circle arrangement, `false` = Grid. |
+| `SymbolSpacingX` | Int | 0 | Horizontal space between icons (Grid mode). |
+| `SymbolSpacingY` | Int | 0 | Vertical space between icons (Grid mode). |
+| `Wrap` | Int | 2 | How many icons per row before wrapping (Grid mode). |
+| `SymbolArcRadius` | Float | 150.0 | Distance from center (Radial mode). |
+| `SymbolArcAngleStart` | Float | -135.0 | Start angle (Radial mode). |
+| `SymbolArcAngleEnd` | Float | 45.0 | End angle (Radial mode). |
+
+### Valid Values (Enums)
+
+#### GAUGE_TYPE
+Combine with commas (e.g., `"GT_RPM, GT_TURBO"`).
 * `GT_NONE`
 * `GT_RPM`
 * `GT_TURBO`
@@ -79,7 +125,8 @@ The system dynamically loads textures from your `.ytd` (Texture Dictionary) base
 * `GT_OIL`
 * `GT_ALL`
 
-### GAUGE_LAYER (Flags)
+#### GAUGE_LAYER
+Controls which image layers are visible.
 * `GL_NONE`
 * `GL_UNDERLAY`
 * `GL_FILL`
@@ -88,89 +135,55 @@ The system dynamically loads textures from your `.ytd` (Texture Dictionary) base
 * `GL_NEEDLE`
 * `GL_NUMBERS`
 * `GL_REDLINE`
+* `GL_LED`
 * `GL_ALL`
 
-### DASH_SYMBOL (Warning Lights)
-| Category | Symbols |
-| :--- | :--- |
-| **Amber (Warning)** | `SY_A_ABS`, `SY_A_ASR`, `SY_A_ENGINE`, `SY_A_FOGL`, `SY_A_FUEL`, `SY_A_TIREPRESSURE`, `SY_A_DLIGHT` |
-| **Red (Critical)** | `SY_R_BATT`, `SY_R_BRAKE_MAL`, `SY_R_DOOR`, `SY_R_DOORS`, `SY_R_HOOD`, `SY_R_TRUNK`, `SY_R_OIL`, `SY_R_PBRAKE`, `SY_R_TEMP` |
-| **Green/Blue (Info)** | `SY_G_DAYTIME`, `SY_G_HEADLIGHTS`, `SY_G_TURN_L`, `SY_G_TURN_R`, `SY_B_HIGHBEAMS` |
+#### DASH_SYMBOL
+Valid strings for `EnabledSymbols`.
+
+* **Amber:** `SY_A_ABS`, `SY_A_ASR`, `SY_A_ENGINE`, `SY_A_FOGL`, `SY_A_FUEL`, `SY_A_TIREPRESSURE`, `SY_A_DLIGHT`
+* **Red:** `SY_R_BATT`, `SY_R_BRAKE_MAL`, `SY_R_DOOR`, `SY_R_DOORS`, `SY_R_HOOD`, `SY_R_TRUNK`, `SY_R_OIL`, `SY_R_PBRAKE`, `SY_R_TEMP`
+* **Green/Blue:** `SY_G_DAYTIME`, `SY_G_HEADLIGHTS`, `SY_G_TURN_L`, `SY_G_TURN_R`, `SY_B_HIGHBEAMS`
 
 ---
 
-## 5. Example Configuration
+## Palette System (.apd)
+
+Palettes control the colors of the HUD elements. They are stored in `.apd` (AGS Palette Data) files.
+
+### UnifiedColor System
+
+The configuration uses a `UnifiedColor` type that accepts either a standard GTA HUD color name OR a custom Hex code.
+
+* **Enum Name:** `"Red"`, `"Blue"`, `"White"`, `"HudColorGreen"`
+* **Hex Code:** `"#FF0000"`, `"#00FF00"`, `"#RRGGBB"`
+
+### Palette Structure
+
+A palette file defines core colors and optional overrides.
+
 ```json
 {
-  "SkinId": "AGS_S01",
-  "Name": "Sport Carbon",
-  "Author": "Khorio",
-  "Version": "1.0",
-  "EnabledGauges": "GT_RPM, GT_TURBO, GT_FUEL, GT_TEMP",
-  "Scale": 1.0,
-  "UseGlobalUnderlay": true,
-  "GlobalUnderlayWidth": 1024,
-  "GlobalUnderlayHeight": 512,
-  "UseSharedUnderlay": true,
+  "Name": "Neon Night",
+  
+  // Core Colors (Required)
+  "Primary": "White",       // Used for Minor Lines, Labels (fallback)
+  "Accent": "#00FFFF",      // Used for Major Lines, Needle (fallback)
+  "Warning": "Red",         // Used for Redlines
+  "Background": "#000000",  // Used for Underlay
 
-  "RPM": {
-    "GaugeLayers": "GL_ALL",
-    "Scale": 0.85,
-    "RelativePosition": { "X": -172, "Y": 0 },
-    "AngleMin": -180.0,
-    "AngleMax": 90.0,
-    "Layout": {
-      "GearPositionOffset": { "X": 24, "Y": 35 },
-      "SpeedPositionOffset": { "X": -15, "Y": 42 }
-    },
-    "Data": {
-      "MinRpm": 5000,
-      "MaxRpm": 10000,
-      "AvailableSteps": [ 5000, 7000, 8000, 9000, 10000 ],
-      "SpeedDisplayScale": 0.35,
-      "GearDisplayScale": 0.25
-    },
-    "Symbols": {
-      "SymbolClusterOffset": { "X": 0, "Y": -20 },
-      "SymbolSpacingX": 50,
-      "EnabledSymbols": [ "SY_G_TURN_L", "SY_G_TURN_R" ]
-    }
-  },
-
-  "Turbo": {
-    "GaugeLayers": "GL_UNDERLAY, GL_LINES_MAJOR, GL_NEEDLE, GL_NUMBERS",
-    "RelativePosition": { "X": 15, "Y": -142 },
-    "AngleMin": -60.0,
-    "AngleMax": 60.0,
-    "Scale": 0.375
-  },
-
-  "Fuel": {
-    "RelativePosition": { "X": 275, "Y": -142 },
-    "AngleMin": 150.0,
-    "AngleMax": 30.0,
-    "Scale": 0.375,
-    "Symbols": {
-      "EnabledSymbols": ["SY_A_FUEL"],
-      "SymbolClusterOffset": { "X": -60, "Y": 0 }
-    }
-  },
-
-  "AdditionalSymbolClusters": [
-    {
-      "UseRadialPositioning": false,
-      "SymbolClusterOffset": { "X": 80, "Y": 83 },
-      "SymbolSpacingX": 5,
-      "Wrap": 5,
-      "SymbolScale": 0.65,
-      "EnabledSymbols": [
-        "SY_R_BATT",
-        "SY_G_HEADLIGHTS",
-        "SY_B_HIGHBEAMS",
-        "SY_A_ENGINE",
-        "SY_A_ABS",
-        "SY_R_PBRAKE"
-      ]
-    }
-  ]
+  // Overrides (Optional - specific control)
+  "NeedleOverride": "Orange",
+  "DigitOverride": "White",
+  "LabelOverride": null     // null means use Primary
 }
+```
+
+### Presets vs. Live Settings
+
+* **Presets Folder:** Files in the `Palettes` directory are **read-only templates**. You cannot modify them directly from the game menu.
+* **Live Settings:** The game maintains a "Living Instance" of the palette in `HUDSettings`.
+* **Modifying:** When you change colors using the in-game menu sliders, you are modifying the **Live Instance**, not the file on disk.
+* **Saving:** To save your custom colors, you must export them as a new Preset from the menu.
+
+**Note:** If you modify a palette via the menu, the system may append `(Modified)` to the name in the UI to indicate it no longer matches the saved preset.
