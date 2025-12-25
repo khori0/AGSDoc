@@ -60,7 +60,7 @@ These settings apply to the entire HUD.
 
 ### Gauge Settings
 
-Each gauge (`RPM`, `Turbo`, `Fuel`, `Temp`, `Oil`) has its own configuration block.
+Each gauge (`RPM`, `Speedo`, `Turbo`, `Fuel`, `Temp`, `Oil`) has its own configuration block.
 
 **Common Properties:**
 
